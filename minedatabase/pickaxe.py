@@ -720,9 +720,10 @@ class Pickaxe:
 
                     # Prune network to only things being expanded
                     self.prune_network(white_list, True)
-
-                print("----------------------------------------")
-                print(f"Expanding Generation {self.generation + 1}\n")
+                
+                if not self.quiet:
+                    print("----------------------------------------")
+                    print(f"Expanding Generation {self.generation + 1}\n")
 
                 # Starting time for expansion
                 time_init = time.time()
@@ -741,23 +742,25 @@ class Pickaxe:
                 ]
                 # No compounds found
                 if not compound_smiles:
-                    print(
-                        "No compounds to expand in generation "
-                        f"{self.generation + 1}. Finished expanding."
-                    )
+                    if not self.quiet:
+                        print(
+                            "No compounds to expand in generation "
+                            f"{self.generation + 1}. Finished expanding."
+                        )
                     return None
 
                 self._transform_helper(compound_smiles, processes)
                 self._remove_cofactor_redundancy()
 
-                print(
-                    f"Generation {self.generation + 1} finished in"
-                    f" {time.time()-time_init} s and contains:"
-                )
-                print(f"\t\t{len(self.compounds) - n_comps} new compounds")
-                print(f"\t\t{len(self.reactions) - n_rxns} new reactions")
-                print(f"\nDone expanding Generation: {self.generation + 1}.")
-                print("----------------------------------------\n")
+                if not self.quiet:
+                    print(
+                        f"Generation {self.generation + 1} finished in"
+                        f" {time.time()-time_init} s and contains:"
+                    )
+                    print(f"\t\t{len(self.compounds) - n_comps} new compounds")
+                    print(f"\t\t{len(self.reactions) - n_rxns} new reactions")
+                    print(f"\nDone expanding Generation: {self.generation + 1}.")
+                    print("----------------------------------------\n")
 
             self.generation += 1
 
