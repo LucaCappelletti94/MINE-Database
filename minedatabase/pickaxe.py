@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 from io import StringIO
 from pathlib import Path, PosixPath, WindowsPath
 from sys import exit
-from typing import List, Set, Tuple, Union
+from typing import List, Set, Tuple, Union, Optional
 
 import libsbml
 import lxml.etree as etree
