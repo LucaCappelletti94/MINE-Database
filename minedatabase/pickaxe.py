@@ -3,6 +3,7 @@
 This module generates new compounds from user-specified starting
 compounds using a set of SMARTS-based reaction rules.
 """
+
 import csv
 import datetime
 import os
@@ -42,6 +43,7 @@ from minedatabase.databases import (
     write_targets_to_mine,
 )
 from minedatabase.reactions import transform_all_compounds_with_full
+from minedatabase.exceptions import DisconnectedMoleculeException
 
 
 # Default to no errors
@@ -274,6 +276,76 @@ class Pickaxe:
                 self.target_smiles.append(smi)
 
         print(f"{len(self.target_smiles)} target compounds loaded\n")
+
+    def add_molecule(self, molecule: Mol, identifier: Optional[str] = None) -> str:
+        """Adds the provided molecule to the pickaxe object after sanitizing it.
+
+        Parameters
+        ----------
+        molecule : Mol
+            RDKit molecule to add.
+        identifier : Optional[str] = None
+            Identifier for the molecule.
+            If None, the molecule will be assigned an identifier equal to
+            the string version of the number of compounds in the pickaxe object.
+
+        Returns
+        -------
+        str
+            Identifier of the molecule.
+
+        Raises
+        ------
+        DisconnectedMoleculeException
+            If the molecule is disconnected and fragmented_mols is False.
+        """
+
+        assert molecule is not None
+        assert isinstance(molecule, Mol)
+
+        if identifier is None:
+            identifier = str(len(self.compounds))
+
+        assert isinstance(identifier, str)
+        assert len(identifier) > 0
+
+        # If compound is disconnected (determined by GetMolFrags
+        # from rdkit) and loading of these molecules is not
+        # allowed, then don't add to internal dictionary.
+        # This is most common when compounds are salts.
+        if not self.fragmented_mols and len(GetMolFrags(molecule)) > 1:
+            raise DisconnectedMoleculeException(molecule)
+
+        # If specified remove charges (before applying reaction
+        # rules later on)
+        if self.neutralise:
+            molecule = utils.neutralise_charges(molecule)
+
+        assert molecule is not None
+        assert isinstance(molecule, Mol)
+
+        RemoveStereochemistry(molecule)
+
+        # Add compound to internal dictionary as a starting
+        # compound and store SMILES string to be returned
+        smile = MolToSmiles(molecule, True)
+
+        # Do not operate on inorganic compounds
+        if "C" in smile or "c" in smile:
+            # resolve potential tautomers and choose first one
+            if "n" in smile:
+                smile = utils.postsanitize_smiles([smile])[0][0]
+                molecule = MolFromSmiles(smile)
+
+            SanitizeMol(molecule)
+            self._add_compound(
+                cpd_name=identifier,
+                smi=smile,
+                cpd_type="Starting Compound",
+                mol=molecule,
+            )
+
+        return identifier
 
     def load_compound_set(self, compound_file: str = None, id_field: str = "id") -> str:
         """Load compounds for expansion into pickaxe.
@@ -1363,7 +1435,7 @@ class Pickaxe:
                     + reaction_annotation.split("\n")
                     + [
                         "  </rdf:RDF>",
-                        "</sbml:annotation>"
+                        "</sbml:annotation>",
                         # "</annotation>"
                     ]
                 )
