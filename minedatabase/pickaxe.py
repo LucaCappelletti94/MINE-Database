@@ -191,8 +191,9 @@ class Pickaxe:
         # cid options
         self.cid_num_inchi_blocks = inchikey_blocks_for_cid
 
-        print("----------------------------------------")
-        print("Intializing pickaxe object")
+        if not self.quiet:
+            print("----------------------------------------")
+            print("Intializing pickaxe object")
         if database:
             # Determine if a specified database is legal
             db = MINE(database, self.mongo_uri)
@@ -200,24 +201,26 @@ class Pickaxe:
                 if database_overwrite:
                     # If db exists, remove db from all of core compounds
                     # and drop db
-                    print(
-                        (
-                            f"Database {database} already exists. "
-                            "Deleting database and removing from core compound"
-                            " mines."
+                    if not self.quiet:
+                        print(
+                            (
+                                f"Database {database} already exists. "
+                                "Deleting database and removing from core compound"
+                                " mines."
+                            )
                         )
-                    )
                     db.core_compounds.update_many({}, {"$pull": {"MINES": database}})
                     db.client.drop_database(database)
                     self.mine = database
                 else:
-                    print(
-                        (
-                            f"Warning! Database {database} already exists."
-                            "Specify database_overwrite as true to delete "
-                            "old database and write new."
+                    if not self.quiet:
+                        print(
+                            (
+                                f"Warning! Database {database} already exists."
+                                "Specify database_overwrite as true to delete "
+                                "old database and write new."
+                            )
                         )
-                    )
                     exit("Exiting due to database name collision.")
             else:
                 self.mine = database
@@ -240,8 +243,9 @@ class Pickaxe:
         if rule_list:
             self._load_operators(rule_list)
 
-        print("\nDone intializing pickaxe object")
-        print("----------------------------------------\n")
+        if not self.quiet:
+            print("\nDone intializing pickaxe object")
+            print("----------------------------------------\n")
 
     def load_targets(
         self,
@@ -500,11 +504,12 @@ class Pickaxe:
                         rule["Reactants"]
                     ) or rxn.GetNumProductTemplates() != len(rule["Products"]):
                         skipped += 1
-                        print(
-                            "The number of coreactants does not match the "
-                            "number of compounds in the SMARTS for reaction "
-                            "rule: " + rule["Name"]
-                        )
+                        if self.errors:
+                            print(
+                                "The number of coreactants does not match the "
+                                "number of compounds in the SMARTS for reaction "
+                                "rule: " + rule["Name"]
+                            )
                     if rule["Name"] in self.operators:
                         raise ValueError("Duplicate reaction rule name")
                     # Update reaction rules dictionary
